@@ -162,8 +162,10 @@ namespace bt
 			}
 
 			// Perform the update on this individual task.
+			cout << "BT: Updating current task:" << endl;
+			cout << "--------------------------" << endl;
 			current->tick();
-
+			cout << endl;
 			// Process the observer if the task is terminated.
 			/*if (current->m_eStatus != BH_RUNNING && !current->m_Observer.empty())
 			{
@@ -185,6 +187,8 @@ namespace bt
 	/******************************************************************************/
 	class Composite : public Behavior
 	{
+	public:
+		void add(Behavior *bh) { m_Children.push_back(bh); };
 	protected:
 		typedef vector<Behavior*> Behaviors;
 		Behaviors m_Children;
@@ -205,7 +209,7 @@ namespace bt
 		{
 			m_Current = m_Children.begin();
 			//BehaviorObserver observer = BehaviorObserver::FROM_METHOD(Sequence, onChildComplete);
-			m_pBehaviorTree->insert(**m_Current); //, &observer);
+			//m_pBehaviorTree->insert(**m_Current); //, &observer);
 		}
 
 		virtual void onChildComplete() 
@@ -233,7 +237,10 @@ namespace bt
 		{
 			while (true)
 			{
+				cout << "Sequence: updating current child:" << endl;
+				cout << "---------------------------------" << endl; 
 				Status s = (*m_Current)->tick();
+				cout << endl;
 
 				if (s != BH_SUCCESS)
 				{
@@ -314,11 +321,17 @@ private:
 class FireGun : public Behavior
 {
 public:
-	FireGun(Gun* gun) { myGun = gun; }
+	FireGun(Gun& gun)
+	{ 
+		myGun = &gun;
+	}
 
 	void onInitialize() 
 	{
-		cout << "onInitialize() \n";
+		cout << "onInitialize(): ";
+		debugPrint();
+		cout << endl;
+
 		m_eStatus = BH_RUNNING;
 	}
 	Status update() 
@@ -326,7 +339,7 @@ public:
 		// Fire once the gun
 		try	{
 			myGun->fire();
-			return BH_RUNNING;
+			return BH_SUCCESS;
 		} catch (char*) {
 			cout << "Catched exception!\n";
 			return BH_FAILURE;
@@ -334,44 +347,37 @@ public:
 	}
 	void onTerminate(Status status) 
 	{
-		cout << "onTerminate: " << status << "\n";
+		cout << "onTerminate: " << status;
+		cout << " ";
+		debugPrint();
+		cout << endl;
 	}
 
 private:
-	Gun* myGun;
-};
+	void debugPrint() { cout << "FireGun [" << this << "]"; }
 
-class TripleFire : public Sequence
-{
-public:
-	TripleFire(BehaviorTree& bt, Gun* gun) 
-	{
-		Sequence(bt);
-		m_Children.push_back(new FireGun(gun));
-	}
+	Gun* myGun;
 };
 
 void main()
 {
 	BehaviorTree* bt = new BehaviorTree;
 
-	Gun* gun = new Gun(6);
-	cout << "Gun " << (gun->hasBullets() ? "has" : "doesnt have") << " bullets \n";
-	FireGun* fireGun = new FireGun(gun);
+	Gun gun(6);
+	cout << "Gun " << (gun.hasBullets() ? "has" : "doesnt have") << " bullets" << endl;
 
-	bt->insert(*fireGun);
-	/*bt->insert(*fireGun);
-	bt->insert(*fireGun);
-	bt->insert(*fireGun);
-	bt->insert(*fireGun);
-	bt->insert(*fireGun);
-	bt->insert(*fireGun);*/
+	Sequence seq(*bt);
+	seq.add(new FireGun(gun));
+	seq.add(new FireGun(gun));
+	seq.add(new FireGun(gun));
+	seq.add(new FireGun(gun));
+	seq.add(new FireGun(gun));
 
-	while (gun->hasBullets()) {
-		bt->tick();
-	}
+	bt->insert(seq);
 
 	bt->tick();
+
+	cout << "Gun " << (gun.hasBullets() ? "has" : "doesnt have") << " bullets" << endl;
 
 	system("pause");
 }
