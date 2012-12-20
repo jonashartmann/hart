@@ -1,13 +1,21 @@
+#ifndef BEHAVIOR_H
+#define BEHAVIOR_H
+#if _MSC_VER > 1000
+#pragma once
+#endif // _MSC_VER > 1000
+
 #include <vector>
 #include <deque>
 #include <iostream>
-#include "../tools/Delegate.h"
-#include "../tools/Asserts.h"
+#include <FastDelegate.h>
+//#include "../tools/asserts.h"
 
 using namespace std;
+using namespace fastdelegate;
 
 namespace bt
 {
+	typedef FastDelegate<void ()> BehaviorObserver;
 
 	enum Status {
 		/**
@@ -32,14 +40,31 @@ namespace bt
 		BH_SUSPENDED,
 	};
 
-	//typedef Delegate<void, void ()> BehaviorObserver;
-
-	/******************************************************************************/
 	/*
-	* Base class for actions, conditions and composites.
-	* 
-	* @author Jonas Hartmann
-	* 
+	 * Convenience function to retrieve the name of the enumeration by its value
+	 */
+	/*const char* getStatusName(Status s)
+	{
+		switch (s)
+		{
+		case BH_INVALID:
+			return "INVALID";
+		case BH_SUCCESS:
+			return "SUCCESS";
+		case BH_FAILURE:
+			return "FAILURE";
+		case BH_RUNNING:
+			return "RUNNING";
+		case BH_SUSPENDED:
+			return "SUSPENDED";
+		}
+
+		return "NOT RECOGNIZED STATUS: " + s;
+	}*/
+	/******************************************************************************/
+
+	/*
+	* Abstract base class for actions, conditions and composites.
 	*/
 	class Behavior 
 	{
@@ -92,41 +117,44 @@ namespace bt
 		virtual void onTerminate(Status)	{}
 
 		Status m_eStatus;
-		//BehaviorObserver m_Observer;
+		BehaviorObserver m_Observer;
 	};
 
+	/* Controls the main execution of the behavior tree */
 	class BehaviorTree
 	{
 	public :
-		/*void insert(Behavior& bh, BehaviorObserver* observer = NULL) 
-		{
-		if (observer != NULL)
-		{
-		bh.m_Observer = observer;
-		}
-		this->insert(bh);
-		}*/
-
 		/**
 		* Insert active behavior.
 		* 
 		* @param bh
 		*            - active behavior
 		*/
-		void insert(Behavior& bh) 
+		void insert(Behavior& bh, BehaviorObserver* observer = NULL) 
 		{
+			if (observer != NULL)
+			{
+				bh.m_Observer = *observer;
+			}
 			m_Behaviors.push_front(&bh);
 		}
 
+		/*void insert(Behavior& bh) 
+		{
+		m_Behaviors.push_front(&bh);
+		}*/
+
 		void terminate(Behavior& bh, Status result) 
 		{
-			ASSERT(result != BH_RUNNING);
+			cout << "BT: Terminating behavior " << addressof(bh) << endl; // << " with status " << getStatusName(result) << endl;
+			//ASSERT(result != BH_RUNNING);
 			bh.m_eStatus = result;
 
-			/*if (!bh.m_Observer.empty())
+			if (!bh.m_Observer.empty())
 			{
-			bh.m_Observer();
-			}*/
+				cout << "Notifying observer of behavior: " << &bh << endl;
+				bh.m_Observer();
+			}
 
 		}
 
@@ -162,21 +190,28 @@ namespace bt
 			}
 
 			// Perform the update on this individual task.
-			cout << "BT: Updating current task:" << endl;
-			cout << "--------------------------" << endl;
-			current->tick();
-			cout << endl;
-			// Process the observer if the task is terminated.
-			/*if (current->m_eStatus != BH_RUNNING && !current->m_Observer.empty())
+			if (current->m_eStatus != BH_SUSPENDED)
 			{
-			// Call the observer to notify the parent
-			current->m_Observer();
+				cout << "BT: Updating current task:" << endl;
+				cout << "--------------------------" << endl;
+				Status status = current->tick();
+				cout << "BT: task updated."; // Status = " << getStatusName(status);
+				cout << endl;
+			}
+
+
+			// Process the observer if the task is terminated.
+			if (current->m_eStatus != BH_RUNNING && (current->m_Observer != NULL))
+			{
+				// Call the observer to notify the parent
+				cout << "Notifying observer of behavior: " << current << endl;
+				current->m_Observer();
 			}
 			// Otherwise drop it into the queue for the next tick().
 			else 
-			{*/
-			m_Behaviors.push_back(current);
-			//}
+			{
+				m_Behaviors.push_back(current);
+			}
 			return true;
 		}
 
@@ -208,53 +243,62 @@ namespace bt
 		virtual void onInitialize()
 		{
 			m_Current = m_Children.begin();
-			//BehaviorObserver observer = BehaviorObserver::FROM_METHOD(Sequence, onChildComplete);
-			//m_pBehaviorTree->insert(**m_Current); //, &observer);
+			BehaviorObserver observer;
+			observer.bind(this, &Sequence::onChildComplete);
+			m_pBehaviorTree->insert(**m_Current, &observer);
 		}
 
 		virtual void onChildComplete() 
 		{
+			cout << "Sequence: Child is complete!" << endl;
 			Behavior& child = **m_Current;
 			if (child.m_eStatus == BH_FAILURE)
 			{
+				cout << "Sequence: terminating with FAILURE" << endl << endl;
 				m_pBehaviorTree->terminate(*this, BH_FAILURE);
+				return;
 			}
 
-			//ASSERT(behavior, child.m_eStatus == BH_SUCCESS);
+			//ASSERT(child.m_eStatus == BH_SUCCESS);
 			if (++m_Current == m_Children.end()) 
 			{
+				cout << "Sequence: terminating with SUCCESS" << endl << endl;
 				m_pBehaviorTree->terminate(*this, BH_SUCCESS);
+				return;
 			}
 			else
 			{
-				//BehaviorObserver observer = BehaviorObserver::FROM_METHOD(Sequence, onChildComplete);
-				m_pBehaviorTree->insert(**m_Current);//, &observer);
+				cout << "Sequence: Inserting new child" << endl << endl;
+				BehaviorObserver observer;
+				observer.bind(this, &Sequence::onChildComplete);
+				m_pBehaviorTree->insert((**m_Current), &observer);
 			}
 
 		}
 
 		virtual Status update() 
 		{
-			while (true)
+			/*while (true)
 			{
-				cout << "Sequence: updating current child:" << endl;
-				cout << "---------------------------------" << endl; 
-				Status s = (*m_Current)->tick();
-				cout << endl;
+			cout << "Sequence: updating current child:" << endl;
+			cout << "---------------------------------" << endl; 
+			Status s = (*m_Current)->tick();
+			cout << endl;
 
-				if (s != BH_SUCCESS)
-				{
-					return s;
-				}
-
-				if (++m_Current == m_Children.end())
-				{
-					return BH_SUCCESS;
-				}
+			if (s != BH_SUCCESS)
+			{
+			return s;
 			}
 
+			if (++m_Current == m_Children.end())
+			{
+			return BH_SUCCESS;
+			}
+			}*/
+
 			// ASSERT_FAIL(behavior, "Unexpected loop exit.");
-			return BH_INVALID;
+			//return BH_INVALID;
+			return BH_SUSPENDED;
 		}
 
 		Behaviors::iterator m_Current;
@@ -262,122 +306,78 @@ namespace bt
 
 	class Selector : public Composite
 	{
+	public:
+		Selector(BehaviorTree& bt) 
+		{
+			m_pBehaviorTree = &bt;
+		}
 	protected:
+		BehaviorTree* m_pBehaviorTree;
+
 		virtual void onInitialize()
 		{
-			m_CurrentChild = m_Children.begin();
+			m_Current = m_Children.begin();
+			BehaviorObserver observer;
+			observer.bind(this, &Selector::onChildComplete);
+			m_pBehaviorTree->insert((**m_Current), &observer);
+		}
+		
+		virtual void onChildComplete() 
+		{
+			cout << "SELECTOR: Child is complete!" << endl;
+			Behavior& child = **m_Current;
+			if (child.m_eStatus != BH_FAILURE)
+			{
+				// cout << "SELECTOR: terminating with " << getStatusName(child.m_eStatus) << endl << endl;
+				m_pBehaviorTree->terminate(*this, child.m_eStatus);
+				return;
+			}
+
+			//ASSERT(child.m_eStatus == BH_FAILURE);
+			if (++m_Current == m_Children.end()) 
+			{
+				cout << "SELECTOR: terminating with FAILURE" << endl << endl;
+				m_pBehaviorTree->terminate(*this, BH_FAILURE);
+				return;
+			}
+			else
+			{
+				cout << "SELECTOR: Inserting new child" << endl << endl;
+				BehaviorObserver observer;
+				observer.bind(this, &Selector::onChildComplete);
+				m_pBehaviorTree->insert((**m_Current), &observer);
+			}
+
 		}
 
 		virtual Status update() 
 		{
-			while (true)
+			/*while (true)
 			{
+				cout << "SELECTOR: updating child -> " << *m_CurrentChild << endl;
 				Status s = (*m_CurrentChild)->tick();
 
 				if (s != BH_FAILURE)
 				{
+					cout << "SELECTOR: finished with " << getStatusName(s) << endl << endl;
 					return s;
 				}
 
 				if (++m_CurrentChild == m_Children.end())
 				{
+					cout << "SELECTOR: finished with FAILURE" << endl << endl;
 					return BH_FAILURE;
 				}
-			}
+			}*/
 
-			// ASSERT_FAIL(behavior, "Unexpected loop exit.");
-			return BH_INVALID;
+			/*ASSERT_FAIL("Unexpected loop exit.");
+			return BH_INVALID;*/
+			return BH_SUSPENDED;
 		}
 
-		Behaviors::iterator m_CurrentChild;
+		Behaviors::iterator m_Current;
 	};
 
 	/******************************************************************************/
 }
-
-using namespace bt;
-
-class Gun 
-{
-public:
-	Gun(int bullets) { bulletsLeft = bullets; }
-	void fire() throw(char*)
-	{ 
-		if (hasBullets()) 
-		{
-			cout << "Fire! \n" ;
-			bulletsLeft = bulletsLeft - 1; 
-		}
-		else
-		{
-			throw("There are no bullets left!");
-		}
-	}
-	bool hasBullets() { return bulletsLeft > 0; }
-private:
-	int bulletsLeft;
-};
-
-class FireGun : public Behavior
-{
-public:
-	FireGun(Gun& gun)
-	{ 
-		myGun = &gun;
-	}
-
-	void onInitialize() 
-	{
-		cout << "onInitialize(): ";
-		debugPrint();
-		cout << endl;
-
-		m_eStatus = BH_RUNNING;
-	}
-	Status update() 
-	{
-		// Fire once the gun
-		try	{
-			myGun->fire();
-			return BH_SUCCESS;
-		} catch (char*) {
-			cout << "Catched exception!\n";
-			return BH_FAILURE;
-		}
-	}
-	void onTerminate(Status status) 
-	{
-		cout << "onTerminate: " << status;
-		cout << " ";
-		debugPrint();
-		cout << endl;
-	}
-
-private:
-	void debugPrint() { cout << "FireGun [" << this << "]"; }
-
-	Gun* myGun;
-};
-
-void main()
-{
-	BehaviorTree* bt = new BehaviorTree;
-
-	Gun gun(6);
-	cout << "Gun " << (gun.hasBullets() ? "has" : "doesnt have") << " bullets" << endl;
-
-	Sequence seq(*bt);
-	seq.add(new FireGun(gun));
-	seq.add(new FireGun(gun));
-	seq.add(new FireGun(gun));
-	seq.add(new FireGun(gun));
-	seq.add(new FireGun(gun));
-
-	bt->insert(seq);
-
-	bt->tick();
-
-	cout << "Gun " << (gun.hasBullets() ? "has" : "doesnt have") << " bullets" << endl;
-
-	system("pause");
-}
+#endif // !defined (BEHAVIOR_H)

@@ -8,6 +8,7 @@
 #include "../../api/Commands.h"
 #include "../../api/Commander.h"
 #include "../../api/CommanderFactory.h"
+#include "DecisionMaking.h"
 
 using namespace std;
 
