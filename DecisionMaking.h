@@ -15,9 +15,7 @@ namespace dms{
 	class DecisionMaking
 	{
 	public:
-		virtual void initialize() {}
-		virtual void tick() = 0;
-		virtual void terminate() {}
+		virtual Command* tick() = 0;
 	};
 
 	/**
@@ -107,10 +105,14 @@ namespace dms{
 	* Abstract base class for a Profile Manager.
 	* Responsible for recovering or creating profiles that match the opponent behavior.
 	* It also uses Reinforcement Learning to manage the relative weigths of DMSs connected to a profile.
+	*
+	* Subclasses should implement the performance update function.
 	*/
 	class ProfileManager
 	{
 	private:
+		bool m_Initialized;
+
 		Profile *m_DefaultProfile;
 		Profile *m_LastUsedProfile;
 		Profile *m_CurrentProfile;
@@ -145,6 +147,7 @@ namespace dms{
 	public:
 		ProfileManager(vector<DecisionMaking*> decisionMakers)
 		{ 
+			m_Initialized = false;
 			m_DecisionMakers = decisionMakers;
 
 			m_DefaultProfile = new Profile();
@@ -154,6 +157,12 @@ namespace dms{
 
 		virtual void init() 
 		{	
+			if (m_Initialized)
+			{
+				// Prevent loading the profiles more than once
+				return;
+			}
+
 			// TODO: load available profiles
 
 			if (m_Profiles.empty())
@@ -163,6 +172,8 @@ namespace dms{
 			{
 				m_CurrentProfile = m_LastUsedProfile;
 			}
+
+			m_Initialized = true;
 		}
 
 		virtual void tick() 
@@ -284,14 +295,22 @@ namespace dms{
 			m_ProfileManager->init();
 		}
 
-		void tick()
+		Command* tick()
 		{
 			m_Monitor->update();
 			m_ProfileManager->tick();
 			
 			Profile* m_CurrentProfile = m_ProfileManager->getCurrentProfile();
-			DecisionMaking* m_CurrentDecisionMaker = m_CurrentProfile->getCurrentConnection()->getDecisionMaker();
-			m_CurrentDecisionMaker->tick();
+			ProfileConnection* connection = m_CurrentProfile->getCurrentConnection();
+			if (NULL != connection) 
+			{
+				DecisionMaking* m_CurrentDecisionMaker = connection->getDecisionMaker();
+				if (m_CurrentDecisionMaker != NULL) {
+					return m_CurrentDecisionMaker->tick();
+				}
+			}
+
+			return NULL;
 		}
 	};
 
