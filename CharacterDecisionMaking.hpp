@@ -2,7 +2,6 @@
 #define CHARACTER_DECISION_MAKING_H
 
 #include "../../api/GameInfo.h"
-#include "../../api/Commands.h"
 #include "DecisionMaking.h"
 
 using namespace dms;
@@ -17,7 +16,7 @@ public:
 	AttackerDMS(const BotInfo& bot, GameInfo& gameInfo, LevelInfo& levelInfo)
 		: m_Bot(&bot), m_GameInfo(&gameInfo), m_LevelInfo(&levelInfo) {}
 
-	virtual Command* tick()
+	virtual const Command* tick()
 	{
 		// Determine a place to run randomly...
 		Vector2 target;

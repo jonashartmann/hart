@@ -146,13 +146,13 @@ namespace bt
 
 		void terminate(Behavior& bh, Status result) 
 		{
-			cout << "BT: Terminating behavior " << addressof(bh) << endl; // << " with status " << getStatusName(result) << endl;
+			//cout << "BT: Terminating behavior " << addressof(bh) << endl; // << " with status " << getStatusName(result) << endl;
 			//ASSERT(result != BH_RUNNING);
 			bh.m_eStatus = result;
 
 			if (!bh.m_Observer.empty())
 			{
-				cout << "Notifying observer of behavior: " << &bh << endl;
+				//cout << "Notifying observer of behavior: " << &bh << endl;
 				bh.m_Observer();
 			}
 
@@ -192,11 +192,11 @@ namespace bt
 			// Perform the update on this individual task.
 			if (current->m_eStatus != BH_SUSPENDED)
 			{
-				cout << "BT: Updating current task:" << endl;
-				cout << "--------------------------" << endl;
+				//cout << "BT: Updating current task:" << endl;
+				//cout << "--------------------------" << endl;
 				Status status = current->tick();
-				cout << "BT: task updated."; // Status = " << getStatusName(status);
-				cout << endl;
+				//cout << "BT: task updated."; // Status = " << getStatusName(status);
+				//cout << endl;
 			}
 
 
@@ -204,7 +204,7 @@ namespace bt
 			if (current->m_eStatus != BH_RUNNING && (current->m_Observer != NULL))
 			{
 				// Call the observer to notify the parent
-				cout << "Notifying observer of behavior: " << current << endl;
+				//cout << "Notifying observer of behavior: " << current << endl;
 				current->m_Observer();
 			}
 			// Otherwise drop it into the queue for the next tick().
@@ -223,7 +223,13 @@ namespace bt
 	class Composite : public Behavior
 	{
 	public:
-		void add(Behavior *bh) { m_Children.push_back(bh); };
+		~Composite() {
+			m_Children.clear();
+		}
+
+		void add(Behavior* bh) { 
+			m_Children.push_back(bh); 
+		};
 	protected:
 		typedef vector<Behavior*> Behaviors;
 		Behaviors m_Children;
@@ -250,11 +256,9 @@ namespace bt
 
 		virtual void onChildComplete() 
 		{
-			cout << "Sequence: Child is complete!" << endl;
 			Behavior& child = **m_Current;
 			if (child.m_eStatus == BH_FAILURE)
 			{
-				cout << "Sequence: terminating with FAILURE" << endl << endl;
 				m_pBehaviorTree->terminate(*this, BH_FAILURE);
 				return;
 			}
@@ -262,13 +266,11 @@ namespace bt
 			//ASSERT(child.m_eStatus == BH_SUCCESS);
 			if (++m_Current == m_Children.end()) 
 			{
-				cout << "Sequence: terminating with SUCCESS" << endl << endl;
 				m_pBehaviorTree->terminate(*this, BH_SUCCESS);
 				return;
 			}
 			else
 			{
-				cout << "Sequence: Inserting new child" << endl << endl;
 				BehaviorObserver observer;
 				observer.bind(this, &Sequence::onChildComplete);
 				m_pBehaviorTree->insert((**m_Current), &observer);
@@ -324,11 +326,9 @@ namespace bt
 		
 		virtual void onChildComplete() 
 		{
-			cout << "SELECTOR: Child is complete!" << endl;
 			Behavior& child = **m_Current;
 			if (child.m_eStatus != BH_FAILURE)
 			{
-				// cout << "SELECTOR: terminating with " << getStatusName(child.m_eStatus) << endl << endl;
 				m_pBehaviorTree->terminate(*this, child.m_eStatus);
 				return;
 			}
@@ -336,13 +336,11 @@ namespace bt
 			//ASSERT(child.m_eStatus == BH_FAILURE);
 			if (++m_Current == m_Children.end()) 
 			{
-				cout << "SELECTOR: terminating with FAILURE" << endl << endl;
 				m_pBehaviorTree->terminate(*this, BH_FAILURE);
 				return;
 			}
 			else
 			{
-				cout << "SELECTOR: Inserting new child" << endl << endl;
 				BehaviorObserver observer;
 				observer.bind(this, &Selector::onChildComplete);
 				m_pBehaviorTree->insert((**m_Current), &observer);

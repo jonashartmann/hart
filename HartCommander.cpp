@@ -8,7 +8,7 @@
 #include "../../api/Commands.h"
 #include "../../api/Commander.h"
 #include "../../api/CommanderFactory.h"
-#include "StrategyPlaner.hpp"
+//#include "StrategyPlaner.hpp"
 
 using namespace std;
 
@@ -56,44 +56,44 @@ HartCommander::tick()
     // Warning: don't spam commands. It will probably not have the effect you want as bots 
     // pause their behavior each time they get a new command.
 
-	StrategyPlaner planer(*m_game, *m_level);
+	/*StrategyPlaner planer(*m_game, *m_level);
 	planer.init();
-	vector<Command*> commands = planer.tick();
+	vector<unique_ptr<const Command>> commands = planer.tick();
 
 	for (auto i = commands.begin(); i != commands.end() ; i++)
 	{
 		issue(*i);
-	}
+	}*/
 
 	//"""Process all the bots that are done with their orders and available for taking commands."""
 
 	// The 'bots_available' list is a dynamically calculated list of bots that are done with their commands.
-	//for (auto i = m_game->bots_available.begin(), end = m_game->bots_available.end(); i!=end; ++i)
-	//{
-	//	// Determine a place to run randomly...
-	//	Vector2 target;
-	//	switch((int)((float)rand()/RAND_MAX*3))
-	//	{
-	//	case 0: // Either a random choice of *current* flag locations, ours or theirs.
-	//		target = (((float)rand()/RAND_MAX > 0.5f) ? m_game->team:m_game->enemyTeam)->flag->position;
-	//		break;
+	for (auto i = m_game->bots_available.begin(), end = m_game->bots_available.end(); i!=end; ++i)
+	{
+		// Determine a place to run randomly...
+		Vector2 target;
+		switch((int)((float)rand()/RAND_MAX*3))
+		{
+		case 0: // Either a random choice of *current* flag locations, ours or theirs.
+			target = (((float)rand()/RAND_MAX > 0.5f) ? m_game->team:m_game->enemyTeam)->flag->position;
+			break;
 
-	//	case 1: // Or a random choice of the goal locations for returning flags.
-	//		target = (((float)rand()/RAND_MAX > 0.5f) ? m_game->team:m_game->enemyTeam)->flagScoreLocation;
-	//		break; 
+		case 1: // Or a random choice of the goal locations for returning flags.
+			target = (((float)rand()/RAND_MAX > 0.5f) ? m_game->team:m_game->enemyTeam)->flagScoreLocation;
+			break; 
 
-	//	case 2: // Or a random position in the entire level, one that's not blocked.
-	//		target = *(*i)->position;
-	//		m_level->findRandomFreePositionInBox(target, Vector2(0.0f,0.0f), Vector2((float)m_level->width, (float)m_level->height));
-	//		break;
-	//	}
+		case 2: // Or a random position in the entire level, one that's not blocked.
+			target = *(*i)->position;
+			m_level->findRandomFreePositionInBox(target, Vector2(0.0f,0.0f), Vector2((float)m_level->width, (float)m_level->height));
+			break;
+		}
 
-	//	switch((int)((float)rand()/RAND_MAX*2))
-	//	{
-	//	case 0: issue(new AttackCommand((*i)->name, target, boost::none, "random")); break;
-	//	case 1: issue(new ChargeCommand((*i)->name, target, "random")); break;
-	//	}
-	//}
+		switch((int)((float)rand()/RAND_MAX*2))
+		{
+		case 0: issue(new AttackCommand((*i)->name, target, boost::none, "random")); break;
+		case 1: issue(new ChargeCommand((*i)->name, target, "random")); break;
+		}
+	}
 
 	for (auto iter = m_game->match->combatEvents.begin(); iter != m_game->match->combatEvents.end(); ++iter)
 	{

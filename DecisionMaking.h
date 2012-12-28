@@ -2,7 +2,8 @@
 #define DECISION_MAKING_H
 
 #include <iostream>
-#include "bt/Behavior.h"
+#include <memory>
+#include "../../api/Commands.h"
 
 using namespace std;
 
@@ -15,7 +16,7 @@ namespace dms{
 	class DecisionMaking
 	{
 	public:
-		virtual Command* tick() = 0;
+		virtual const Command* tick() = 0;
 	};
 
 	/**
@@ -24,16 +25,16 @@ namespace dms{
 	class Feature
 	{
 	private:
-		const char* m_Name;
+		string m_Name;
 		int m_Value;
 	public:
-		Feature(const char* name, int value)
+		Feature(string name, int value)
 		{
 			m_Name = name;
 			m_Value = value;
 		}
 
-		const char* getName() { return m_Name; }
+		string getName() { return m_Name; }
 		int getValue() { return m_Value; }
 		void setValue(int value) { m_Value = value; }
 	};
@@ -44,17 +45,17 @@ namespace dms{
 	class ProfileConnection
 	{
 	private:
-		DecisionMaking *decisionMaker;
-		int weight;
-
+		DecisionMaking* m_DecisionMaker;
+		int m_Weight;
+	
 	public:
 		ProfileConnection (DecisionMaking& decisionMaker, int weight)
-			: decisionMaker(&decisionMaker), weight(weight) {}
+			: m_DecisionMaker(&decisionMaker), m_Weight(weight) {}
 
-		int getWeight() { return weight; }
-		void setWeight(int newWeight) { weight = newWeight; }
+		int getWeight() { return m_Weight; }
+		void setWeight(int newWeight) { m_Weight = newWeight; }
 
-		DecisionMaking* getDecisionMaker() { return decisionMaker; }
+		DecisionMaking* getDecisionMaker() { return m_DecisionMaker; }
 	};
 
 	/**
@@ -70,10 +71,11 @@ namespace dms{
 		* It is chosen upon the highest weighted connection between the current profile and all available DMSs.
 		*/
 		ProfileConnection *m_CurrentDMS;
-		vector<ProfileConnection> m_Connections;
+		vector<ProfileConnection*> m_Connections;
 		vector<Feature> m_Features; // TODO: change to set
 
 	public:
+		~Profile() {}
 		/*
 		* Constructs a matrix of connections with every DMS with default weight values.
 		* The first DMS in the list will receive the biggest value and will be selected as the current one.
@@ -84,17 +86,16 @@ namespace dms{
 				return;
 			}
 
-			vector<ProfileConnection> connections;
+			vector<ProfileConnection*> connections;
 			// Starts with 1000 and go down
 			int w = 1000;
 			for (auto iter = availableDecisionMakers.begin(); iter != availableDecisionMakers.end(); ++iter)
 			{
 				// Create matrix of connections
-				ProfileConnection connection((**iter), w--);
-				connections.push_back(connection);
+				connections.push_back(new ProfileConnection((**iter), w--));
 			}
 
-			m_CurrentDMS = &connections.front();
+			m_CurrentDMS = *(&connections.front());
 			m_Connections = connections;
 		}
 
@@ -153,7 +154,10 @@ namespace dms{
 			m_DefaultProfile = new Profile();
 			m_DefaultProfile->init(m_DecisionMakers);
 		}
-		~ProfileManager() { delete m_DefaultProfile; }
+
+		~ProfileManager() { 
+			delete m_DefaultProfile;
+		}
 
 		virtual void init() 
 		{	
@@ -295,7 +299,7 @@ namespace dms{
 			m_ProfileManager->init();
 		}
 
-		Command* tick()
+		const Command* tick()
 		{
 			m_Monitor->update();
 			m_ProfileManager->tick();

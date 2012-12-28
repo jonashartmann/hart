@@ -97,12 +97,12 @@ public:
 		}
 	}
 
-	vector<Command*> tick()
+	vector<const Command*> tick()
 	{
-		vector<Command*> commands;
+		vector<const Command*> commands;
 		for (auto i = m_Cdms.begin(); i != m_Cdms.end(); i++)
 		{
-			Command* command = (*i)->tick();
+			const Command *command = (*i)->tick();
 			if (NULL != command) 
 			{
 				commands.push_back(command);
