@@ -24,7 +24,7 @@ public:
 class MockProfileManager : public ProfileManager
 {
 public:
-	MockProfileManager(vector<DecisionMaking*> dms): ProfileManager(dms), m_CalledInit(0), m_CalledTick(0) {}
+	MockProfileManager(vector<DecisionMaking*> dms): ProfileManager(dms), m_CalledInit(0), m_CalledTick(0), m_CalledAlert(0) {}
 
 	virtual int performanceUpdate(DecisionMaking& decisionMaker, int currentWeight)
 	{
@@ -43,8 +43,18 @@ public:
 		ProfileManager::tick();
 	}
 
+	virtual void alert() {
+		m_CalledAlert++;
+		ProfileManager::alert();
+	}
+
+	void addProfile(Profile& profile) {
+		m_Profiles.push_back(profile);
+	}
+
 	int m_CalledTick;
 	int m_CalledInit;
+	int m_CalledAlert;
 };
 
 class MockAC : public ActivationCondition
@@ -112,6 +122,49 @@ protected:
 	}
 };
 
+TEST_F(DecisionMakingTest, ProfileManagerInit) {
+	m_managerMock->init();
+
+	EXPECT_EQ(1, m_managerMock->m_CalledInit);
+	EXPECT_TRUE(m_managerMock->getCurrentProfile() != nullptr);
+}
+
+TEST_F(DecisionMakingTest, ProfileManagerTick) {
+	m_managerMock->tick();
+
+	EXPECT_EQ(1, m_managerMock->m_CalledTick);
+	// TODO: extend test after tick function is implemented
+}
+
+TEST_F(DecisionMakingTest, ProfileManagerAlert) {
+	m_managerMock->init();
+
+	Profile* currentProfile = m_managerMock->getCurrentProfile();
+	EXPECT_TRUE(currentProfile != nullptr);
+	
+	m_managerMock->addProfile(*currentProfile);
+
+	ProfileConnection* connection = currentProfile->getCurrentConnection();
+	EXPECT_FALSE(connection->getWeight() == 10);
+
+	// Make sure the weight is correctly updated after an alert
+	m_managerMock->alert();
+	EXPECT_TRUE(connection->getWeight() == 10);
+
+}
+
+TEST_F(DecisionMakingTest, MonitorUpdate) {
+	m_mockAC->m_Condition = false;
+	m_monitorMock->update();
+
+	EXPECT_EQ(0, m_managerMock->m_CalledAlert);
+
+	m_mockAC->m_Condition = true;
+	m_monitorMock->update();
+
+	EXPECT_EQ(1, m_managerMock->m_CalledAlert);
+}
+
 TEST_F(DecisionMakingTest, CDMS_init)
 {
 	m_cdms->init();
@@ -119,10 +172,11 @@ TEST_F(DecisionMakingTest, CDMS_init)
 	EXPECT_EQ(1, m_managerMock->m_CalledInit);
 }
 
-//TEST_F(DecisionMakingTest, CDMS_tick){
-//	m_cdms->tick();
-//
-//	EXPECT_EQ(1, m_monitorMock->m_CalledUpdate);
-//	EXPECT_EQ(1, m_managerMock->m_CalledTick);
-//	EXPECT_EQ(1, m_decisionMakingMock->calledTick);
-//}
+TEST_F(DecisionMakingTest, CDMS_tick){
+	m_cdms->tick();
+	
+	EXPECT_EQ(1, m_managerMock->m_CalledInit);
+	EXPECT_EQ(1, m_managerMock->m_CalledTick);
+	EXPECT_EQ(1, m_monitorMock->m_CalledUpdate);
+	EXPECT_EQ(1, m_decisionMakingMock->calledTick);
+}

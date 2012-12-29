@@ -40,27 +40,6 @@ namespace bt
 		BH_SUSPENDED,
 	};
 
-	/*
-	 * Convenience function to retrieve the name of the enumeration by its value
-	 */
-	/*const char* getStatusName(Status s)
-	{
-		switch (s)
-		{
-		case BH_INVALID:
-			return "INVALID";
-		case BH_SUCCESS:
-			return "SUCCESS";
-		case BH_FAILURE:
-			return "FAILURE";
-		case BH_RUNNING:
-			return "RUNNING";
-		case BH_SUSPENDED:
-			return "SUSPENDED";
-		}
-
-		return "NOT RECOGNIZED STATUS: " + s;
-	}*/
 	/******************************************************************************/
 
 	/*

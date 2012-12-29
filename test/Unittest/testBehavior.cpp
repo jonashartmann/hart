@@ -203,31 +203,3 @@ TEST_F(CompositeTest, Sequence) {
 
 	EXPECT_EQ(BH_FAILURE, sequence->m_eStatus);
 }
-//void demo()
-//{
-//	BehaviorTree bt;
-//
-//	Gun gun(6);
-//
-//	Sequence seq(bt);
-//	for (int i = 0; i < 7; i++)
-//	{
-//		FireGun f(gun);
-//		seq.add(&f);
-//	}
-//	
-//	Selector sel(bt);
-//	sel.add(&seq);
-//	
-//	ReloadGun reload(gun);
-//	sel.add(&reload);
-//
-//	BehaviorObserver observer;
-//	observer.bind(&OnBehaviorFinished);
-//	bt.insert(sel, &observer);
-//
-//	root = &sel;
-//
-//	/* Starts the magic */
-//	bt.tick();
-//}

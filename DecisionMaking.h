@@ -111,7 +111,7 @@ namespace dms{
 	*/
 	class ProfileManager
 	{
-	private:
+	protected:
 		bool m_Initialized;
 
 		Profile *m_DefaultProfile;
@@ -121,21 +121,6 @@ namespace dms{
 		vector<Profile> m_Profiles;
 		vector<DecisionMaking*> m_DecisionMakers;
 
-		void resetInternalFeatures() 
-		{
-			// TODO reset internal player features set (internal features)
-		}
-		/**
-		* Updates weight between the current profile and the current DMS.
-		*/
-		void updateCurrentWeight()
-		{
-			// Updates the weight based on a performance update function
-			ProfileConnection* connection = m_CurrentProfile->getCurrentConnection();
-			connection->setWeight(performanceUpdate(*(connection->getDecisionMaker()), connection->getWeight()));
-		}
-
-	protected:
 		/**
 		* Performance update function.
 		* >= 0 if performance is satisfying
@@ -182,6 +167,9 @@ namespace dms{
 
 		virtual void tick() 
 		{
+			if (!m_Initialized) {
+				init();
+			}
 			// TODO: check world state
 			// TODO: if its a new game session then 
 			resetInternalFeatures();
@@ -212,6 +200,10 @@ namespace dms{
 			}
 		}
 
+		
+
+		Profile* getCurrentProfile() { return m_CurrentProfile; }
+	private:
 		void createProfileFromCurrent()
 		{
 			// TODO: set features of current profile with internal features
@@ -220,7 +212,20 @@ namespace dms{
 			resetInternalFeatures();
 		}
 
-		Profile* getCurrentProfile() { return m_CurrentProfile; }
+		void resetInternalFeatures() 
+		{
+			// TODO reset internal player features set (internal features)
+		}
+
+		/**
+		* Updates weight between the current profile and the current DMS.
+		*/
+		void updateCurrentWeight()
+		{
+			// Updates the weight based on a performance update function
+			ProfileConnection* connection = m_CurrentProfile->getCurrentConnection();
+			connection->setWeight(performanceUpdate(*(connection->getDecisionMaker()), connection->getWeight()));
+		}
 	};
 
 	/**
