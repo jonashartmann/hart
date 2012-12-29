@@ -91,7 +91,7 @@ TEST(PolymorphTest, Tick)
 	delete mock;
 }
 
-// Test fixture for sharing the same initialization among tests
+/** Test fixture for sharing the same initialization among tests */
 class DecisionMakingTest : public testing::Test
 {
 protected:
